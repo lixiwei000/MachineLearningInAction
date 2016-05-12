@@ -29,6 +29,13 @@
 
 使用Python进行文本分类
 社区评论的敏感词过滤
+
+朴素贝叶斯分类器使用:
+1.获取单词源,制作词汇表
+2.每一组词源为作为训练集,抽取不分词源作为测试集
+3.使用训练集,创建 不同类别 的单词 分值矩阵 ,词频越高,其本分类的代表性越强
+4.使用测试集,对3得到的不同类别的分值矩阵进行向量加,之后整合为多个类别概率分值
+5.比较4得到分值,分值高德作为预测结果
 '''
 from email import feedparser
 
@@ -89,11 +96,11 @@ def trainNB0(trainMatrix,trainCategory):
     p1Denom = 2.0
     for i in range(numTrainDocs):                           # 遍历文档
         if trainCategory[i] == 1:                           # 如果当前文档属于侮辱性文档
-            p1Num += trainMatrix[i]                         # 向量相加
-            p1Denom += sum(trainMatrix[i])                  # 敏感词文档中单词数
+            p1Num += trainMatrix[i]                         # 向量相加,词袋模型显示单词词频
+            p1Denom += sum(trainMatrix[i])                  # 敏感词文档中单词总数
         else:                                               # 如果当前文档属于正常言论
-            p0Num += trainMatrix[i]
-            p0Denom += sum(trainMatrix[i])                  # 正常言论中单词数
+            p0Num += trainMatrix[i]                         # 向量想家,词袋模型显示单词词频
+            p0Denom += sum(trainMatrix[i])                  # 正常言论中单词总数
     # p1Vect = p1Num / p1Denom                                # 对每个元素做除法
     # p0Vect = p0Num / p0Denom
     p1Vect = log(p1Num/p1Denom)                             # 改:防止下溢出
@@ -176,7 +183,7 @@ def testingNB():
 5.测试算法:使用classifyNB
 6.使用算法:对一组文档进行分类
 '''
-# 文本解析
+# 文本解析,将字符串解析为单词列表
 def textParse(bigString):
     import re
     listOfTokens = re.split(r'\W*',bigString)
@@ -221,43 +228,44 @@ def spamTest():
 '''
 # ny = feedparser.parse('http://newyork.craigslist.org/stp/index.rss')
 # print(len((ny['entries'])))
+# 计算出现频率最高的30个单词
 def calcMostFreq(vocabList,fullText):
     import operator
     freqDict = {}
     for token in vocabList:
         freqDict[token] = fullText.count(token)
-    sortedFreq = sorted(freqDict.iteritems(),key=operator.itemgetter(1),reverst=True)
+    sortedFreq = sorted(freqDict.items(),key=operator.itemgetter(1),reverse=True)
     return sortedFreq[:30]
 
+import feedparser
 def loadWords(feed1,feed0):
-    import feedparser
     docList = []; classList = []; fullText = []
     minLen = min(len(feed1['entries']),len(feed0['entries']))
-    for i in range(minLen):
-        wordList = textParse(feed1['entries'][i]['summary'])
-        docList.append(wordList)
-        fullText.extend(wordList)
-        classList.append(1)
+    for i in range(minLen):                                                 # 遍历两种数据源,保存单词
+        wordList = textParse(feed1['entries'][i]['summary'])                # 获取单词列表
+        docList.append(wordList)                                            # 添加一组单词
+        fullText.extend(wordList)                                           # 添加出现的所有单词
+        classList.append(1)                                                 # 添加类别
         wordList = textParse(feed0['entries'][i]['summary'])
         docList.append(wordList)
         fullText.extend(wordList)
         classList.append(0)
-    vocabList = createVocabList(docList)
-    top30Words = calcMostFreq(vocabList,fullText)
-    for pairW in top30Words:
-        if pairW[0] in vocabList:
-            vocabList.remove(pairW[0])
-    trainingSet = range(2*minLen)
-    testSet = []
-    for i in range(20):
+    vocabList = createVocabList(docList)                                    # 创建词汇表,去重
+    top30Words = calcMostFreq(vocabList,fullText)                           # 获取频率最高的30个单词,去掉他们,提高正确率
+    # for pairW in top30Words:
+    #     if pairW[0] in vocabList:
+    #         vocabList.remove(pairW[0])
+    trainingSet = list(range(2*minLen))                                     # 创建训练集
+    testSet = []                                                            # 创建测试集
+    for i in range(20):                                                     # 随机抽取20个数据加入测试集
         randIndex = int(random.uniform(0,len(trainingSet)))
         testSet.append(trainingSet[randIndex])
         del(trainingSet[randIndex])
     trainMat = []; trainClasses = []
-    for docIndex in trainingSet:
-        trainMat.append(bagOfWords2VecMN(vocabList,docList[docIndex]))
-        trainClasses.append(classList[docIndex])
-    p0V,p1V,pSpam = trainNB0(array(trainMat),array(trainClasses))
+    for docIndex in trainingSet:                                            # 遍历训练集,
+        trainMat.append(bagOfWords2VecMN(vocabList,docList[docIndex]))      # 创建基于词典的词袋稀疏矩阵
+        trainClasses.append(classList[docIndex])                            # 添加对应的类别
+    p0V,p1V,pSpam = trainNB0(array(trainMat),array(trainClasses))           # 训练模型,计算出概率矩阵
     errorCount = 0
     for docIndex in testSet:
         wordVector = bagOfWords2VecMN(vocabList,docList[docIndex])
@@ -266,3 +274,27 @@ def loadWords(feed1,feed0):
             print("错误分类:",docList[docIndex])
     print("错误率:" ,float(errorCount) / len(testSet))
     return vocabList,p0V,p1V
+
+ny = feedparser.parse('http://newyork.craigslist.org/stp/index.rss')
+sf = feedparser.parse('http://sfbay.craigslist.org/stp/index.rss')
+# vocabList,pSF,pNY = loadWords(ny,sf)
+
+# 最具表征性德词汇显示函数
+def getTopWords(ny,sf):
+    import operator
+    vocabList,p0V,p1V = loadWords(ny,sf)
+    topNY = []; topSF = []
+    for i in range(len(p0V)):
+        if p0V[i] > -6.0:
+            topSF.append((vocabList[i],p0V[i]))
+        if p1V[i] > -6.0:
+            topNY.append((vocabList[i],p1V[i]))
+    sortedSF = sorted(topSF,key=lambda pair:pair[1],reverse=True)
+    print("SF*SF*SF*SF*SF*SF*SF*SF*SF*SF*SF*SF*SF*SF*SF*SF*SF*SF*SF*SF*SF*SF*SF*")
+    for item in sortedSF:
+        print(item[0])
+    sortedNY = sorted(topNY,key=lambda pair : pair[1],reverse=True)
+    print("NY*NY*NY*NY*NY*NY*NY*NY*NY*NY*NY*NY*NY*NY*NY*NY*NY*NY*NY*NY*NY*NY*NY*")
+    for item in sortedNY:
+        print(item[0])
+getTopWords(ny,sf)
