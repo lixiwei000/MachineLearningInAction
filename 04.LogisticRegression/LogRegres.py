@@ -34,7 +34,7 @@ def sigmoid(inX):
     return 1.0/(1+exp(-inX))
 # 梯度上升算法
 def grandAscent(dataMatIn,classLabels):
-    dataMatrix = mat(dataMatIn)                                                 # 将数据转换为numpy矩阵n*3
+    dataMatrix = mat(dataMatIn)                                                  # 将数据转换为numpy矩阵n*3
     labelMat = mat(classLabels).transpose()                                     # 标签矩阵转置   n*1
     m,n = shape(dataMatrix)                                                     # 求矩阵维度
     alpha = 0.001                                                               # 步长

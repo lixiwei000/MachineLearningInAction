@@ -191,7 +191,7 @@ def textParse(bigString):
 
 def spamTest():
     docList = []; classList = []; fullText = []
-    basePath = "/Users/lixiwei-mac/Documents/IdeaProjects/MachineLearningInAction/NaiveBayes/email/"
+    basePath = "/Users/lixiwei-mac/Documents/IdeaProjects/MachineLearningInAction/03.NaiveBayes/email/"
     for i in range(1,26):                                                   # 导入并解析文本
         wordList = textParse(open(basePath + 'spam/%d.txt' % i,encoding="gbk").read())     # 转换为词列表
         docList.append(wordList)                                            # 加入文档组
@@ -221,7 +221,7 @@ def spamTest():
             print("错误词表:",docList[docIndex])
     print("错误率为:" , float(errorCount)/len(testSet))
 
-# spamTest()
+spamTest()
 
 '''
 示例:使用朴素贝叶斯分类器从个人广告中获取区域倾向
@@ -275,8 +275,8 @@ def loadWords(feed1,feed0):
     print("错误率:" ,float(errorCount) / len(testSet))
     return vocabList,p0V,p1V
 
-ny = feedparser.parse('http://newyork.craigslist.org/stp/index.rss')
-sf = feedparser.parse('http://sfbay.craigslist.org/stp/index.rss')
+# ny = feedparser.parse('http://newyork.craigslist.org/stp/index.rss')
+# sf = feedparser.parse('http://sfbay.craigslist.org/stp/index.rss')
 # vocabList,pSF,pNY = loadWords(ny,sf)
 
 # 最具表征性德词汇显示函数
@@ -297,4 +297,4 @@ def getTopWords(ny,sf):
     print("NY*NY*NY*NY*NY*NY*NY*NY*NY*NY*NY*NY*NY*NY*NY*NY*NY*NY*NY*NY*NY*NY*NY*")
     for item in sortedNY:
         print(item[0])
-getTopWords(ny,sf)
+# getTopWords(ny,sf)
